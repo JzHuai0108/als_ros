@@ -56,7 +56,9 @@ There are launch files in the als_ros package. These names can be changed in **m
 After setting the topics and transformation, the localization software can be used with mcl.launch.
 
 ```
-$ roslaunch als_ros mcl.launch
+$ roslaunch laser_scan_matcher m10.launch
+$ roslaunch als_ros mcl.launch use_gl_pose_sampler:=true map_yaml_file:=/docker/roscpp_android_ndk/catkin_ws/data/m10/rosbag_2023-07-19-18-00-52.bag_map.yaml
+$ rosbag play /docker/roscpp_android_ndk/catkin_ws/data/m10/rosbag_2023-07-19-18-11-03.bag
 ```
 
 In default, localization for pose tracking with the robust localization and reliability estimation techniques presented in [2, 3] is executed.

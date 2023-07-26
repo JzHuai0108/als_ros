@@ -9,7 +9,8 @@
     <arg name="scan_name" default="/scan" /> <!-- sensor_msgs::LaserScan -->
     <arg name="odom_name" default="/odom" /> <!-- nav_msgs::Odometry -->
     <arg name="map_name" default="/map" /> <!-- nav_msgs::OccupancyGrid -->
-
+    <arg name="map_yaml_file" default="" />
+    <arg name="open_rviz" default="true" />
     <!-- Output messages -->
     <arg name="pose_name" default="/mcl_pose" /> <!-- geometry_msgs::PoseStamped -->
     <arg name="particles_name" default="/mcl_particles" /> <!-- geometry_msgs::PoseArray -->
@@ -47,9 +48,9 @@
     <arg name="initial_pose_yaw" default="0.0" />
 
     <!-- Initial noise -->
-    <arg name="initial_noise_x" default="0.02" />
-    <arg name="initial_noise_y" default="0.02" />
-    <arg name="initial_noise_yaw" default="0.01" />
+    <arg name="initial_noise_x" default="0.05" />
+    <arg name="initial_noise_y" default="0.05" />
+    <arg name="initial_noise_yaw" default="0.04" />
 
     <!-- 0: likelihood field model, 1, beam model, 2: class conditional measurement model
          The class conditional measurement model is highly recommended for pose tracking. -->
@@ -195,20 +196,21 @@
 
 
     <!-- include other launch files -->
-<!--
+
     <include file="$(find als_ros)/launch/robot_tf.launch" >
         <arg name="laser_frame" value="$(arg laser_frame)" />
         <arg name="base_link_frame" value="$(arg base_link_frame)" />
     </include >
- -->
 
 
 
-<!--
+
+
     <include file="$(find als_ros)/launch/map_server.launch" >
         <arg name="map_name" value="$(arg map_name)" />
+        <arg name="map_yaml_file" value="$(arg map_yaml_file)" />
     </include >
- -->
+
 
 
 
@@ -312,4 +314,6 @@
         <param name="localization_hz" value="$(arg localization_hz)" type="double" />
         <param name="transform_tolerance" value="$(arg transform_tolerance)" type="double" />
     </node >
+
+    <node name="mcl_rviz" pkg="rviz" type="rviz" args="-d $(find als_ros)/rviz/als_ros.rviz" if="$(arg open_rviz)" />
 </launch >
