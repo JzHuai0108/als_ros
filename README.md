@@ -37,7 +37,7 @@ If you do not want to make a new workspace for als_ros, please copy the als_ros 
 Following messages (topics) are needed to be published; 
 
 - sensor_msgs::LaserScan (/scan)
-- nav_msgs::Odometry (/odom)
+- nav_msgs::Odometry (/odom) pose of base_link in odom frame.
 - nav_msgs::OccupancyGrid (/map)
 
 Names inside of the brackets are default topic names.
@@ -49,6 +49,9 @@ Also, static transformation between following two frames is needed to be set.
 
 Names inside of the brackets are default frame names.
 
+Also, initial pose parameters, e.g., initial_pose_x, need to be set.
+They are the pose of the base link frame relative to the map frame.
+
 There are launch files in the als_ros package. These names can be changed in **mcl.launch**.
 
 
@@ -56,9 +59,14 @@ There are launch files in the als_ros package. These names can be changed in **m
 After setting the topics and transformation, the localization software can be used with mcl.launch.
 
 ```
-$ roslaunch laser_scan_matcher m10.launch
-$ roslaunch als_ros mcl.launch use_gl_pose_sampler:=true map_yaml_file:=/docker/roscpp_android_ndk/catkin_ws/data/m10/rosbag_2023-07-19-18-00-52.bag_map.yaml
-$ rosbag play /docker/roscpp_android_ndk/catkin_ws/data/m10/rosbag_2023-07-19-18-11-03.bag
+export TURTLEBOT3_MODEL=burger
+source devel/setup.bash
+roslaunch laser_scan_matcher m10.launch use_robot_model:=false
+
+source devel/setup.bash
+roslaunch als_ros mcl.launch use_gl_pose_sampler:=true map_yaml_file:=/media/jhuai/docker/roscpp_android_ndk/catkin_ws/data/ls_m10_909/06132100.yaml
+
+rosbag play /media/jhuai/OneTouch/jhuai/data/cane/jun-19-2023/rosbag_2023-06-19-11-58-20.bag --clock
 ```
 
 In default, localization for pose tracking with the robust localization and reliability estimation techniques presented in [2, 3] is executed.

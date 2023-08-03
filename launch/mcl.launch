@@ -45,12 +45,12 @@
     <!-- Initial pose (x [m], y [m], yaw [deg]) -->
     <arg name="initial_pose_x" default="0.0" />
     <arg name="initial_pose_y" default="0.0" />
-    <arg name="initial_pose_yaw" default="0.0" />
+    <arg name="initial_pose_yaw" default="180" />
 
     <!-- Initial noise -->
-    <arg name="initial_noise_x" default="0.05" />
-    <arg name="initial_noise_y" default="0.05" />
-    <arg name="initial_noise_yaw" default="0.04" />
+    <arg name="initial_noise_x" default="0.1" />
+    <arg name="initial_noise_y" default="0.1" />
+    <arg name="initial_noise_yaw" default="0.1" />
 
     <!-- 0: likelihood field model, 1, beam model, 2: class conditional measurement model
          The class conditional measurement model is highly recommended for pose tracking. -->
@@ -58,7 +58,7 @@
 
     <!-- Numbers of particles
          In this MCL package, the numbers of the particles are constant. -->
-    <arg name="particle_num" default="200" />
+    <arg name="particle_num" default="400" />
 
     <!-- If use_augmented_mcl is true, augmented MCL is used.
          Augmented MCL adds random particles when doing resampling if MCL might fail localization.
@@ -192,27 +192,16 @@
          If all parameters are set to minus, these thresholds are ignored. -->
     <rosparam param="/$(arg node_name)/resample_thresholds" > [0.2, 0.2, 0.2, 0.02, -99999.0] </rosparam >
 
-
-
-
     <!-- include other launch files -->
-
     <include file="$(find als_ros)/launch/robot_tf.launch" >
         <arg name="laser_frame" value="$(arg laser_frame)" />
         <arg name="base_link_frame" value="$(arg base_link_frame)" />
     </include >
 
-
-
-
-
     <include file="$(find als_ros)/launch/map_server.launch" >
         <arg name="map_name" value="$(arg map_name)" />
         <arg name="map_yaml_file" value="$(arg map_yaml_file)" />
     </include >
-
-
-
 
     <include file="$(find als_ros)/launch/gl_pose_sampler.launch" if="$(arg use_gl_pose_sampler)" >
         <arg name="map_name" value="$(arg map_name)" />
