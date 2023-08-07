@@ -38,6 +38,7 @@
 #include <als_ros/Pose.h>
 #include <als_ros/Particle.h>
 #include <als_ros/MAEClassifier.h>
+#include <als_ros/static_transforms.h>
 
 namespace als_ros {
 
@@ -371,21 +372,27 @@ public:
 
         // set initial pose
         mclPose_.setPose(initialPoseX_, initialPoseY_, initialPoseYaw_);
+        ROS_INFO("Initial x %.4f, y %.4f, yaw %.4f.", initialPoseX_, initialPoseY_, initialPoseYaw_);
         resetParticlesDistribution();
         odomPose_.setPose(0.0, 0.0, 0.0);
         deltaX_ = deltaY_ = deltaDist_ = deltaYaw_ = 0.0;
 
         // get the relative pose from the base link to the laser from the tf tree
         ros::Rate loopRate(10);
-        tf::StampedTransform tfBaseLink2Laser;
+        tf::StampedTransform stampedBaseLink2Laser;
+        tf::Transform tfBaseLink2Laser;
         int tfFailedCnt = 0;
+        const bool use_internal_tf = true;
+        if (use_internal_tf) {
+            tfBaseLink2Laser = get_base_link_T_laser("turtlebot3_burger");
+        } else {
         while (ros::ok()) {
             ros::spinOnce();
             try {
                 ros::Time now = ros::Time::now();
-                tfListener_.waitForTransform(baseLinkFrame_, laserFrame_, now, ros::Duration(2.0));
-                tfListener_.lookupTransform(baseLinkFrame_, laserFrame_, now, tfBaseLink2Laser);
-                break;
+                tfListener_.waitForTransform(baseLinkFrame_, laserFrame_, now, ros::Duration(1.0));
+                tfListener_.lookupTransform(baseLinkFrame_, laserFrame_, now, stampedBaseLink2Laser);
+                tfBaseLink2Laser = stampedBaseLink2Laser;
             } catch (tf::TransformException ex) {
                 tfFailedCnt++;
                 if (tfFailedCnt >= 300) {
@@ -396,6 +403,7 @@ public:
                 }
                 loopRate.sleep();
             }
+        }
         }
         tf::Quaternion quatBaseLink2Laser(tfBaseLink2Laser.getRotation().x(),
             tfBaseLink2Laser.getRotation().y(),

@@ -37,7 +37,7 @@
     <!-- If use_odom_tf is false, transformation from the map to base link is directly broadcast.
          If your odometry node does not broadcast transformation between odometry and base link, this must be false. -->
     <arg name="use_odom_tf" default="true" />
-
+    <arg name="publish_robot_tf" default="false" />
 
 
     <!-- MCL parameters -->
@@ -193,10 +193,13 @@
     <rosparam param="/$(arg node_name)/resample_thresholds" > [0.2, 0.2, 0.2, 0.02, -99999.0] </rosparam >
 
     <!-- include other launch files -->
-    <include file="$(find als_ros)/launch/robot_tf.launch" >
-        <arg name="laser_frame" value="$(arg laser_frame)" />
-        <arg name="base_link_frame" value="$(arg base_link_frame)" />
-    </include >
+    <group if="$(arg publish_robot_tf)">
+       <include file="$(find als_ros)/launch/robot_tf.launch" >
+         <arg name="laser_frame" value="$(arg laser_frame)" />
+         <arg name="base_link_frame" value="$(arg base_link_frame)" />
+       </include>
+    </group>
+
 
     <include file="$(find als_ros)/launch/map_server.launch" >
         <arg name="map_name" value="$(arg map_name)" />

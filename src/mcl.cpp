@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     als_ros::MCL mcl;
     double localizationHz = mcl.getLocalizationHz();
     ros::Rate loopRate(localizationHz);
-
+    int count = 0;
     while (ros::ok()) {
         ros::spinOnce();
         mcl.updateParticlesByMotionModel();
@@ -42,7 +42,10 @@ int main(int argc, char **argv) {
         mcl.broadcastTF();
         // mcl.plotLikelihoodMap();
         mcl.setCanUpdateScan(true);
-        mcl.printResult();
+        if (count < 5) {
+            mcl.printResult();
+            count++;
+        }
         loopRate.sleep();
     }
 

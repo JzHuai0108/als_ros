@@ -1,0 +1,31 @@
+<!-- export TURTLEBOT3_MODEL=burger -->
+
+<!-- initial_pose_x:=2.0 initial_pose_y:=-2.0 initial_pose_a:=1.57 
+initial_cov_xx:=2.25 initial_cov_yy:=2.25 initial_cov_aa:=6.0  -->
+
+<launch>
+    <arg name="node_name" default="mcl" />
+    <arg name="open_rviz" default="true" />
+    <arg name="use_robot_model" default="true" />
+
+    <arg name="map_yaml_file" default="/media/jhuai/docker/roscpp_android_ndk/catkin_ws/data/ls_m10_909/06132100.yaml" />
+    <arg name="bag" default="/media/jhuai/OneTouch/jhuai/data/cane/jun-19-2023/rosbag_2023-06-19-11-58-20.bag" />
+
+    <include file="$(find turtlebot3_navigation)/launch/amcl.launch">
+        <arg name="amcl_rviz" value="$(arg open_rviz)" />
+        <arg name="load_mapfile" value="true" />
+        <arg name="map_file" value="$(arg map_yaml_file)" />
+        <arg name="base_frame_id" value="base_footprint" />
+    </include>
+
+    <!-- export TURTLEBOT3_MODEL=burger -->
+    <include file="$(find laser_scan_matcher)/demo/m10.launch">
+        <arg name="use_robot_model" value="$(arg use_robot_model)" />
+    </include>
+
+    <node name="rosbag" pkg="rosbag" type="play" 
+        args="$(arg bag)" />
+    <!-- <node name="rqt_tf_tree" pkg="rqt_tf_tree" type="rqt_tf_tree" />
+    <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph" /> -->
+</launch>
+
