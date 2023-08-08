@@ -25,7 +25,7 @@ initial_cov_xx:=2.25 initial_cov_yy:=2.25 initial_cov_aa:=6.0  -->
 
     <node name="rosbag" pkg="rosbag" type="play" 
         args="$(arg bag)" />
-    <!-- <node name="rqt_tf_tree" pkg="rqt_tf_tree" type="rqt_tf_tree" />
-    <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph" /> -->
+    <node name="rqt_tf_tree" pkg="rqt_tf_tree" type="rqt_tf_tree" />
+    <!-- <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph" /> -->
 </launch>
 

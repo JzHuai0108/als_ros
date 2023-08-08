@@ -10,6 +10,11 @@
     <arg name="initial_noise_x" default="1.2" />
     <arg name="initial_noise_y" default="1.2" />
     <arg name="initial_noise_yaw" default="1.0" />
+    <arg name="transform_tolerance" default="0.25" />
+    <arg name="use_augmented_mcl" default="true" />
+    <arg name="z_hit" default="0.95" />
+    <arg name="z_max" default="0.01" />
+    <arg name="z_rand" default="0.04" />
 
     <arg name="map_yaml_file" default="/media/jhuai/docker/roscpp_android_ndk/catkin_ws/data/ls_m10_909/06132100.yaml" />
     <arg name="bag" default="/media/jhuai/OneTouch/jhuai/data/cane/jun-19-2023/rosbag_2023-06-19-11-58-20.bag" />
@@ -23,11 +28,11 @@
         <arg name="initial_noise_x" default="$(arg initial_noise_x)" />
         <arg name="initial_noise_y" default="$(arg initial_noise_y)" />
         <arg name="initial_noise_yaw" default="$(arg initial_noise_yaw)" />
-        <arg name="transform_tolerance" default="0.1" />
-        <arg name="use_augmented_mcl" default="true" />
-        <arg name="z_hit" default="0.95" />
-        <arg name="z_max" default="0.01" />
-        <arg name="z_rand" default="0.04" />
+        <arg name="transform_tolerance" default="$(arg transform_tolerance)" />
+        <arg name="use_augmented_mcl" default="$(arg use_augmented_mcl)" />
+        <arg name="z_hit" default="$(arg z_hit)" />
+        <arg name="z_max" default="$(arg z_max)" />
+        <arg name="z_rand" default="$(arg z_rand)" />
     </include>
 
     <!-- export TURTLEBOT3_MODEL=burger -->
@@ -38,7 +43,7 @@
     <node name="rosbag" pkg="rosbag" type="play" 
         args="--clock $(arg bag)" />
 
-    <!-- <node name="rqt_tf_tree" pkg="rqt_tf_tree" type="rqt_tf_tree" /> -->
+    <node name="rqt_tf_tree" pkg="rqt_tf_tree" type="rqt_tf_tree" />
     <!-- <node name="rqt_graph" pkg="rqt_graph" type="rqt_graph" /> -->
 </launch>
 

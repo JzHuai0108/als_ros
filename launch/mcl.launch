@@ -200,11 +200,12 @@
        </include>
     </group>
 
-
-    <include file="$(find als_ros)/launch/map_server.launch" >
+    <group if="$(eval map_yaml_file != '')">
+      <include file="$(find als_ros)/launch/map_server.launch" >
         <arg name="map_name" value="$(arg map_name)" />
         <arg name="map_yaml_file" value="$(arg map_yaml_file)" />
-    </include >
+      </include>
+    </group>
 
     <include file="$(find als_ros)/launch/gl_pose_sampler.launch" if="$(arg use_gl_pose_sampler)" >
         <arg name="map_name" value="$(arg map_name)" />
@@ -234,6 +235,7 @@
 
     <!-- MCL node -->
     <node name="$(arg node_name)" pkg="als_ros" type="mcl" output="screen" >
+        <!-- <rosparam file="$(find als_ros)/launch/mcl_params.yaml" command="load" /> -->
         <param name="measurement_model_type" value="$(arg measurement_model_type)" type="int" />
 
         <param name="scan_name" value="$(arg scan_name)" type="string" />

@@ -334,7 +334,7 @@ public:
         // failure detector
         nh_.param("classifier_type", classifierType_, classifierType_);
         nh_.param("mae_classifier_dir", maeClassifierDir_, maeClassifierDir_);
-
+        ROS_INFO("mae_classifier_dir %s", maeClassifierDir_.c_str());
         // global-localization-based pose sampling
         nh_.param("use_gl_pose_sampler", useGLPoseSampler_, useGLPoseSampler_);
         nh_.param("fuse_gl_pose_sampler_only_unreliable", fuseGLPoseSamplerOnlyUnreliable_, fuseGLPoseSamplerOnlyUnreliable_);
