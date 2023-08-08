@@ -48,8 +48,11 @@ include_directories(
   "${PROJECT_SOURCE_DIR}/include"
 )
 
-add_executable(mcl src/mcl.cpp)
-target_link_libraries(mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAMLCPP_LIBRARIES})
+add_library(als_mcl src/MCL.cpp)
+target_link_libraries(als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAMLCPP_LIBRARIES})
+
+add_executable(mcl src/mcl_main.cpp)
+target_link_libraries(mcl als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAMLCPP_LIBRARIES})
 
 add_executable(mrf_failure_detector src/mrf_failure_detector.cpp)
 target_link_libraries(mrf_failure_detector ${catkin_LIBRARIES})
@@ -70,11 +73,18 @@ add_executable(scan2pc src/scan2pc.cpp)
 target_link_libraries(scan2pc ${catkin_LIBRARIES})
 
 add_executable(slamer src/slamer.cpp)
-target_link_libraries(slamer ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAMLCPP_LIBRARIES} ${PCL_LIBRARY_DIRS})
+target_link_libraries(slamer als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAMLCPP_LIBRARIES} ${PCL_LIBRARIES})
 
 install(TARGETS
     mcl mrf_failure_detector gl_pose_sampler classifier_dataset_generator mae_classifier_learning evaluator scan2pc slamer
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(TARGETS
+    als_mcl
+    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 )
 
 install(DIRECTORY include/als_ros/
