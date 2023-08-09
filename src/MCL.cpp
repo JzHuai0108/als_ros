@@ -245,7 +245,7 @@ MCL::MCL(void):
             ROS_ERROR("Cannot get a map message."
                 " Did you pulish the map?"
                 " Expected map topic name is %s\n", mapName_.c_str());
-            exit(1);
+            // exit(1);
         }
         loopRate.sleep();
     }
@@ -261,7 +261,7 @@ MCL::MCL(void):
             ROS_ERROR("Cannot get a scan message."
                 " Did you pulish the scan?"
                 " Expected scan topic name is %s\n", scanName_.c_str());
-            exit(1);
+            // exit(1);
         }
         loopRate.sleep();
     }

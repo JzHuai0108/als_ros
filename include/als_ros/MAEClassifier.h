@@ -217,6 +217,12 @@ public:
 
     void readClassifierParams(void) {
         std::string yamlFile = classifiersDir_ + "classifier.yaml";
+        if (FILE *file = fopen(yamlFile.c_str(), "r")) {
+            fclose(file);
+        } else {
+            printf("yaml file for the MAE classifier does not exist at %s.\n", yamlFile.c_str());
+            return;
+        }
         YAML::Node lconf = YAML::LoadFile(yamlFile);
 
         maxResidualError_ = lconf["maxResidualError"].as<double>();
