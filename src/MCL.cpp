@@ -211,6 +211,7 @@ MCL::MCL(void):
             tfListener_.waitForTransform(baseLinkFrame_, laserFrame_, now, ros::Duration(1.0));
             tfListener_.lookupTransform(baseLinkFrame_, laserFrame_, now, stampedBaseLink2Laser);
             tfBaseLink2Laser = stampedBaseLink2Laser;
+            break;
         } catch (tf::TransformException ex) {
             tfFailedCnt++;
             if (tfFailedCnt >= 300) {

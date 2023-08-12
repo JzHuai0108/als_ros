@@ -48,7 +48,7 @@ include_directories(
   "${PROJECT_SOURCE_DIR}/include"
 )
 
-add_library(als_mcl src/MCL.cpp)
+add_library(als_mcl src/MCL.cpp src/GLPoseSampler.cpp)
 target_link_libraries(als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${YAMLCPP_LIBRARIES})
 
 add_executable(mcl src/mcl_main.cpp)
@@ -58,7 +58,7 @@ add_executable(mrf_failure_detector src/mrf_failure_detector.cpp)
 target_link_libraries(mrf_failure_detector ${catkin_LIBRARIES})
 
 add_executable(gl_pose_sampler src/gl_pose_sampler.cpp)
-target_link_libraries(gl_pose_sampler ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(gl_pose_sampler als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(classifier_dataset_generator src/classifier_dataset_generator.cpp)
 target_link_libraries(classifier_dataset_generator ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
