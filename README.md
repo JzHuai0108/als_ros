@@ -24,7 +24,7 @@ als_ros can be installed with following commands.
 ```
 $ git clone https://github.com/NaokiAkai/als_ros.git
 $ cd als_ros
-$ catkin_make
+$ catkin build
 $ source devel/setup.bash
 ```
 

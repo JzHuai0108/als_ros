@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   geometry_msgs
   nav_msgs
+  octomap_server
   roscpp
   rospy
   sensor_msgs
@@ -32,9 +33,9 @@ else()
 endif()
 
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES als
-#  CATKIN_DEPENDS cv_bridge geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs tf tf_conversions
+ INCLUDE_DIRS include
+ LIBRARIES als
+ CATKIN_DEPENDS cv_bridge geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs tf octomap_server
 #  DEPENDS system_lib
 )
 
@@ -59,6 +60,9 @@ target_link_libraries(mrf_failure_detector ${catkin_LIBRARIES})
 
 add_executable(gl_pose_sampler src/gl_pose_sampler.cpp)
 target_link_libraries(gl_pose_sampler als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_executable(gl_pose_sampler_eval src/GLPoseSampler.cpp src/gl_pose_sampler_eval.cpp)
+target_link_libraries(gl_pose_sampler_eval ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(classifier_dataset_generator src/classifier_dataset_generator.cpp)
 target_link_libraries(classifier_dataset_generator ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})

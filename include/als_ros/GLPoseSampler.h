@@ -142,6 +142,16 @@ public:
         ros::spin();
     }
 
+    ros::NodeHandle &getNodeHandle(void) {
+        return nh_;
+    }
+
+    void submapCB(const nav_msgs::OccupancyGrid::ConstPtr &msg);
+
+    void odomCB(const nav_msgs::Odometry::ConstPtr &msg);
+
+    geometry_msgs::PoseArray poses_;
+
 private:
     inline double nrand(double n) {
         return (n * sqrt(-2.0 * log((double)rand() / RAND_MAX)) * cos(2.0 * M_PI * rand() / RAND_MAX));
@@ -175,8 +185,6 @@ private:
     void writeMapAndKeypoints(nav_msgs::OccupancyGrid map, std::vector<Keypoint> keypoints);
 
     void mapCB(const nav_msgs::OccupancyGrid::ConstPtr &msg);
-
-    void odomCB(const nav_msgs::Odometry::ConstPtr &msg);
 
     nav_msgs::OccupancyGrid buildLocalMap(void);
 

@@ -110,18 +110,18 @@ GLPoseSampler::GLPoseSampler(void):
         loopRate.sleep();
     }
 
-    cnt = 0;
-    while (ros::ok()) {
-        ros::spinOnce();
-        cnt++;
-        if (cnt >= 300) {
-            ROS_ERROR("A odom message might not be published.");
-            // exit(1);
-        }
-        if (gotOdom_)
-            break;
-        loopRate.sleep();
-    }
+    // cnt = 0;
+    // while (ros::ok()) {
+    //     ros::spinOnce();
+    //     cnt++;
+    //     if (cnt >= 300) {
+    //         ROS_ERROR("A odom message might not be published.");
+    //         // exit(1);
+    //     }
+    //     if (gotOdom_)
+    //         break;
+    //     loopRate.sleep();
+    // }
 
     tf::StampedTransform stampedBaseLink2Laser;
     tf::Transform tfBaseLink2Laser;
@@ -181,7 +181,7 @@ void GLPoseSampler::setMapInfo(nav_msgs::OccupancyGrid map) {
     mapData_ = map.data;
 }
 
-cv::Mat buildDistanceFieldMap(nav_msgs::OccupancyGrid map) {
+cv::Mat buildDistanceFieldMap(const nav_msgs::OccupancyGrid &map) {
     cv::Mat binMap(map.info.height, map.info.width, CV_8UC1);
     for (int v = 0; v < map.info.height; v++) {
         for (int u = 0; u < map.info.width; u++) {
@@ -386,6 +386,24 @@ void GLPoseSampler::mapCB(const nav_msgs::OccupancyGrid::ConstPtr &msg) {
     sdfKeypointsPub_.publish(sdfKeypointsMarker_);
 //        writeMapAndKeypoints(*msg, sdfKeypoints_);
     gotMap_ = true;
+}
+
+void GLPoseSampler::submapCB(const nav_msgs::OccupancyGrid::ConstPtr &msg) {
+    const nav_msgs::OccupancyGrid &localMap = *msg;
+    cv::Mat localDistMap = buildDistanceFieldMap(localMap);
+    cv::GaussianBlur(localDistMap, localDistMap, cv::Size(5, 5), 5);
+    std::vector<Keypoint> localSDFKeypoints = detectKeypoints(localMap, localDistMap, mapOrigin_, keypointsMinDistFromMap_, gradientSquareTH_);
+    std::vector<SDFOrientationFeature> localSDFOrientationFeatures = calculateFeatures(localDistMap, localSDFKeypoints, sdfFeatureWindowSize_, mapResolution_);
+//            writeMapAndKeypoints(localMap, localSDFKeypoints);
+    std::vector<int> correspondingIndices = findCorrespondingFeatures(localSDFKeypoints, localSDFOrientationFeatures);
+    Pose prevOdomPose = odomPose_;
+    poses_ = generatePoses(prevOdomPose, localSDFKeypoints, localSDFOrientationFeatures, correspondingIndices);
+    visualization_msgs::Marker localSDFKeypointsMarker = makeSDFKeypointsMarker(localSDFKeypoints, odomFrame_);
+
+    poses_.header.stamp = sdfKeypointsMarker_.header.stamp = localSDFKeypointsMarker.header.stamp = msg->header.stamp;
+    posesPub_.publish(poses_);
+    sdfKeypointsPub_.publish(sdfKeypointsMarker_);
+    localSDFKeypointsPub_.publish(localSDFKeypointsMarker);
 }
 
 void GLPoseSampler::odomCB(const nav_msgs::Odometry::ConstPtr &msg) {
