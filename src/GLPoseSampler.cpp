@@ -578,6 +578,8 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
     int beyondBounds = 0;
     int sitOnWall = 0;
     int lowMatchingRate = 0;
+    std::vector<double> ratios;
+    ratios.reserve(100);
 
     for (int i = 0; i < (int)correspondingIndices.size(); ++i) {
         int idx = correspondingIndices[i];
@@ -588,12 +590,20 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
 
         double dx = localSDFKeypoints[i].getX() - currentOdomPose.getX();
         double dy = localSDFKeypoints[i].getY() - currentOdomPose.getY();
+        bool myform = true;
+        if (myform) {
+            dx = currentOdomPose.getX() - localSDFKeypoints[i].getX();
+            dy = currentOdomPose.getY() - localSDFKeypoints[i].getY();
+        }
         double localDomOrient = localSDFOrientationFeatures[i].getDominantOrientation();
         double dOrient = currentOdomPose.getYaw() - localDomOrient;
         Keypoint targetKeypoint = sdfKeypoints_[idx];
         double targetDomOrient = sdfOrientationFeatures_[idx].getDominantOrientation();
 
         double dDomOrient = localDomOrient - targetDomOrient;
+        if (myform) {
+            dDomOrient = targetDomOrient - localDomOrient;
+        }
         double c = cos(dDomOrient);
         double s = sin(dDomOrient);
         double sensorX = dx * c - dy * s + targetKeypoint.getX();
@@ -620,8 +630,10 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
         double baseYaw = sensorYaw - byaw;
 
         if (!addRandomSamples_) {
+            double ratio = 1.0;
             if (matchingRateTH_ > 0.0) {
-                if (computeMatchingRate(Pose(baseX, baseY, baseYaw)) < matchingRateTH_) {
+                ratio = computeMatchingRate(Pose(baseX, baseY, baseYaw));
+                if (ratio < matchingRateTH_) {
                     lowMatchingRate++;
                     continue;
                 }
@@ -631,6 +643,7 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
             pose.position.y = baseY;
             pose.orientation = tf::createQuaternionMsgFromYaw(baseYaw);
             poses.poses.push_back(pose);
+            ratios.push_back(ratio);
         } else {
             for (int j = 0; j < randomSamplesNum_; ++j) {
                 double x = baseX + nrand(positionalRandomNoise_);
@@ -657,6 +670,21 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
     ROS_INFO("Total %d, no match %d, beyond bounds %d, on obstacle %d, low matching rate %d, bad %d, good %d.",
         (int)correspondingIndices.size(), noMatch, beyondBounds, sitOnWall, lowMatchingRate, 
         noMatch + beyondBounds + sitOnWall + lowMatchingRate, (int)poses.poses.size());
+    // find the max ratio and index
+    double maxRatio = 0.0;
+    int maxIdx = -1;
+    for (int i = 0; i < (int)ratios.size(); ++i) {
+        if (ratios[i] > maxRatio) {
+            maxRatio = ratios[i];
+            maxIdx = i;
+        }
+    }
+    if (maxIdx >= 0) {
+        geometry_msgs::PoseArray bestPose;
+        bestPose.header.frame_id = poses.header.frame_id;
+        bestPose.poses.push_back(poses.poses[maxIdx]);
+        poses = bestPose;
+    }
     return poses;
 }
 

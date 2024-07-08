@@ -212,6 +212,22 @@ public:
     using octomap_server::OctomapServer::m_gridmap;
 };
 
+void transformTumOdometry(TimedPoseVector &poses, const Eigen::Vector3d &trans) {
+    Eigen::Affine3d T = Eigen::Affine3d::Identity();
+    T.translation() = Eigen::Vector3d(trans[0], trans[1], 0);
+    Eigen::AngleAxisd aa(trans[2], Eigen::Vector3d::UnitZ());
+    T.linear() = aa.toRotationMatrix();
+    for (size_t i = 0; i < poses.size(); i++) {
+        Eigen::Vector3d p = poses[i].p;
+        Eigen::Quaterniond q = poses[i].q;
+        Eigen::Affine3d pose = Eigen::Affine3d::Identity();
+        pose.translation() = p;
+        pose.linear() = q.toRotationMatrix();
+        Eigen::Affine3d newpose = T * pose;
+        poses[i].p = newpose.translation();
+        poses[i].q = Eigen::Quaterniond(newpose.rotation());
+    }
+}
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "gl_pose_sampler");
@@ -231,6 +247,13 @@ int main(int argc, char **argv) {
         ROS_ERROR("Failed to load TUM odometry file: %s", posefile.c_str());
         return 1;
     }
+    double dx = -12;
+    double dy = 10;
+    double theta = 45 * M_PI / 180;
+    dx = 0;
+    dy = 0;
+    theta = 0;
+    transformTumOdometry(tum_poses, {dx, dy, theta});
     // check that files of pose time as names exist
     std::string posedir;
     size_t slashpos = posefile.find_last_of('/');
