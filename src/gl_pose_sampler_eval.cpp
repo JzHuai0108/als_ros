@@ -24,6 +24,7 @@
 #include <octomap_server/OctomapServer.h>
 
 #include <als_ros/GLPoseSampler.h>
+#include <als_ros/pointcloud_to_laserscan.h>
 
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
@@ -150,7 +151,6 @@ class MapGenerator
 
       fclose(out);
 
-
       std::string mapmetadatafile = outdir_ + '/' + mapname_ + ".yaml";
       ROS_INFO("Writing map occupancy data to %s", mapmetadatafile.c_str());
       FILE* yaml = fopen(mapmetadatafile.c_str(), "w");
@@ -221,6 +221,9 @@ int main(int argc, char **argv) {
     nh.param("odometry_file", posefile, std::string(""));
     std::string outdir;
     nh.param("output_dir", outdir, std::string(""));
+
+    PointCloudToLaserScanNode pc2scan(nh);
+
     nav_msgs::OccupancyGridConstPtr submap_;
 
     TimedPoseVector tum_poses;
@@ -254,7 +257,7 @@ int main(int argc, char **argv) {
     }
 
     tf::TransformBroadcaster tf_broadcaster;
-    
+
     MyOctomapServer map_server;
     map_server.m_filterSpeckles = true;
     map_server.m_maxRange = 40.0;
@@ -276,12 +279,21 @@ int main(int argc, char **argv) {
     W_T_Bzup.stamp_ = tum_poses[k].t;
     tf_broadcaster.sendTransform(W_T_Bzup);
 
+    tf::StampedTransform map_T_odom;
+    map_T_odom.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+    map_T_odom.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
+    map_T_odom.frame_id_ = "map";
+    map_T_odom.child_frame_id_ = "odom";
+    map_T_odom.stamp_ = tum_poses[k].t;
+    tf_broadcaster.sendTransform(map_T_odom);
+
     for (int i = 0; i < (int)tum_poses.size(); i++) {
         int j = 0;
         int left = i < halfwin ? 0 : i - halfwin;
         int right = i + halfwin >= tum_poses.size() ? tum_poses.size() - 1 : i + halfwin;
         // 1. publish pont clouds and tf poses to octomap server to build a submap
         // and get the submap in the end.
+        std::vector<sensor_msgs::LaserScan> scans2d;
         for (j = left; j <= right; j++) {
             std::stringstream ss;
             ss << "scan_" << tum_poses[j].t.sec << std::setw(9) << std::setfill('0') << tum_poses[j].t.nsec << ".pcd";
@@ -301,6 +313,7 @@ int main(int argc, char **argv) {
                 W_T_Bzup.child_frame_id_ = "Bzup";
                 W_T_Bzup.stamp_ = tum_poses[k].t;
                 tf_broadcaster.sendTransform(W_T_Bzup);
+                tf_broadcaster.sendTransform(map_T_odom);
                 lastpublishedtfid = k;
             }
             ros::spinOnce();
@@ -312,10 +325,17 @@ int main(int argc, char **argv) {
             cloud_msg.header.frame_id = "Bzup";
             sensor_msgs::PointCloud2ConstPtr cloud_msg_ptr = boost::make_shared<sensor_msgs::PointCloud2>(cloud_msg);
             map_server.insertCloudCallback(cloud_msg_ptr);
+            if (j == i) {
+                sensor_msgs::LaserScan scan;
+                pc2scan.cloudCallback(cloud_msg_ptr);
+                scans2d.push_back(*pc2scan.scan_msg_);
+            }
             ros::spinOnce();
             if (j == right) {
                 nav_msgs::OccupancyGridPtr submap = boost::make_shared<nav_msgs::OccupancyGrid>(map_server.m_gridmap);
                 submap->header.stamp = tum_poses[i].t;
+                submap->header.frame_id = "odom";
+                submap->info.origin.orientation.w = 1.0;
                 submap_ = submap;
                 std_srvs::Empty empty;
                 map_server.resetSrv(empty.request, empty.response);
@@ -335,6 +355,7 @@ int main(int argc, char **argv) {
         odom.pose.pose.orientation.z = tum_poses[i].q.z();
         odom.pose.pose.orientation.w = tum_poses[i].q.w();
         sampler.odomCB(boost::make_shared<nav_msgs::Odometry>(odom));
+        sampler.setKeyScans(scans2d);
         sampler.submapCB(submap_);
         recordPosesCB(sampler.poses_, tum_poses[i].t, outdir + "/gl_sampled_poses.txt");
         std::string mapname = "submap_" + std::to_string(i);

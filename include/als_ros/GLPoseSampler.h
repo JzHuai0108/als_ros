@@ -150,6 +150,11 @@ public:
 
     void odomCB(const nav_msgs::Odometry::ConstPtr &msg);
 
+    void setKeyScans(std::vector<sensor_msgs::LaserScan> &keyScans) {
+        keyScans_ = keyScans;
+        keyScansNum_ = keyScans.size();
+    }
+
     geometry_msgs::PoseArray poses_;
 
 private:

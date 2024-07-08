@@ -57,30 +57,31 @@ GLPoseSampler::GLPoseSampler(void):
     gotOdom_(false),
     tfListener_()
 {
-    nh_.param("map_name", mapName_, mapName_);
-    nh_.param("scan_name", scanName_, scanName_);
-    nh_.param("odom_name", odomName_, odomName_);
-    nh_.param("poses_name", posesName_, posesName_);
-    nh_.param("local_map_name", localMapName_, localMapName_);
-    nh_.param("sdf_keypoints_name", sdfKeypointsName_, sdfKeypointsName_);
-    nh_.param("local_sdf_keypoints_name", localSDFKeypointsName_, localSDFKeypointsName_);
-    nh_.param("map_frame", mapFrame_, mapFrame_);
-    nh_.param("odom_frame", odomFrame_, odomFrame_);
-    nh_.param("base_link_frame", baseLinkFrame_, baseLinkFrame_);
-    nh_.param("laser_frame", laserFrame_, laserFrame_);
-    nh_.param("key_scans_num", keyScansNum_, keyScansNum_);
-    nh_.param("key_scan_interval_dist", keyScanIntervalDist_, keyScanIntervalDist_);
-    nh_.param("key_scan_interval_yaw", keyScanIntervalYaw_, keyScanIntervalYaw_);
-    nh_.param("gradient_square_th", gradientSquareTH_, gradientSquareTH_);
-    nh_.param("keypoints_min_dist_from_map", keypointsMinDistFromMap_, keypointsMinDistFromMap_);
-    nh_.param("sdf_feature_window_size", sdfFeatureWindowSize_, sdfFeatureWindowSize_);
-    nh_.param("average_sdf_delta_th", averageSDFDeltaTH_, averageSDFDeltaTH_);
-    nh_.param("add_random_samples", addRandomSamples_, addRandomSamples_);
-    nh_.param("add_opposite_samples", addOppositeSamples_, addOppositeSamples_);
-    nh_.param("random_samples_num", randomSamplesNum_, randomSamplesNum_);
-    nh_.param("positional_random_noise", positionalRandomNoise_, positionalRandomNoise_);
-    nh_.param("angular_random_noise", angularRandomNoise_, angularRandomNoise_);
-    nh_.param("matching_rate_th", matchingRateTH_, matchingRateTH_);
+    nh_.param("/map_name", mapName_, mapName_);
+    nh_.param("/scan_name", scanName_, scanName_);
+    nh_.param("/odom_name", odomName_, odomName_);
+    nh_.param("/poses_name", posesName_, posesName_);
+    nh_.param("/local_map_name", localMapName_, localMapName_);
+    nh_.param("/sdf_keypoints_name", sdfKeypointsName_, sdfKeypointsName_);
+    nh_.param("/local_sdf_keypoints_name", localSDFKeypointsName_, localSDFKeypointsName_);
+    nh_.param("/map_frame", mapFrame_, mapFrame_);
+    nh_.param("/odom_frame", odomFrame_, odomFrame_);
+    nh_.param("/base_link_frame", baseLinkFrame_, baseLinkFrame_);
+    nh_.param("/laser_frame", laserFrame_, laserFrame_);
+    nh_.param("/key_scans_num", keyScansNum_, keyScansNum_);
+    nh_.param("/key_scan_interval_dist", keyScanIntervalDist_, keyScanIntervalDist_);
+    nh_.param("/key_scan_interval_yaw", keyScanIntervalYaw_, keyScanIntervalYaw_);
+    nh_.param("/gradient_square_th", gradientSquareTH_, gradientSquareTH_);
+    nh_.param("/keypoints_min_dist_from_map", keypointsMinDistFromMap_, keypointsMinDistFromMap_);
+    nh_.param("/sdf_feature_window_size", sdfFeatureWindowSize_, sdfFeatureWindowSize_);
+    nh_.param("/average_sdf_delta_th", averageSDFDeltaTH_, averageSDFDeltaTH_);
+    nh_.param("/add_random_samples", addRandomSamples_, addRandomSamples_);
+    nh_.param("/add_opposite_samples", addOppositeSamples_, addOppositeSamples_);
+    nh_.param("/random_samples_num", randomSamplesNum_, randomSamplesNum_);
+    nh_.param("/positional_random_noise", positionalRandomNoise_, positionalRandomNoise_);
+    nh_.param("/angular_random_noise", angularRandomNoise_, angularRandomNoise_);
+    nh_.param("/matching_rate_th", matchingRateTH_, matchingRateTH_);
+    ROS_INFO("Key scan num = %d", keyScansNum_);
 
     keyScanIntervalYaw_ *= M_PI / 180.0;
 
@@ -128,7 +129,8 @@ GLPoseSampler::GLPoseSampler(void):
     cnt = 0;
     const bool use_internal_tf = true;
     if (use_internal_tf) {
-        tfBaseLink2Laser = get_base_link_T_laser("turtlebot3_burger");
+        tfBaseLink2Laser.setIdentity();
+        // tfBaseLink2Laser = get_base_link_T_laser("turtlebot3_burger");
     } else {
     while (ros::ok()) {
         ros::spinOnce();
@@ -402,6 +404,7 @@ void GLPoseSampler::submapCB(const nav_msgs::OccupancyGrid::ConstPtr &msg) {
 
     poses_.header.stamp = sdfKeypointsMarker_.header.stamp = localSDFKeypointsMarker.header.stamp = msg->header.stamp;
     posesPub_.publish(poses_);
+    localMapPub_.publish(localMap);
     sdfKeypointsPub_.publish(sdfKeypointsMarker_);
     localSDFKeypointsPub_.publish(localSDFKeypointsMarker);
 }
@@ -524,6 +527,9 @@ std::vector<int> GLPoseSampler::findCorrespondingFeatures(std::vector<Keypoint> 
         else
             correspondingIndices[i] = -1;
     }
+
+    ROS_INFO("correspondingIndices size: %d, localSDFKeypoints size: %d, map sdf keypoints size: %d",
+        (int)correspondingIndices.size(), (int)localSDFKeypoints.size(), (int)sdfKeypoints_.size());
     return correspondingIndices;
 }
 
@@ -534,7 +540,7 @@ double GLPoseSampler::computeMatchingRate(Pose pose) {
     double sensorX = baseLink2Laser_.getX() * c - baseLink2Laser_.getY() * s + pose.getX();
     double sensorY = baseLink2Laser_.getX() * s + baseLink2Laser_.getY() * c + pose.getY();
     double sensorYaw = yaw + pose.getYaw();
-    sensor_msgs::LaserScan scan = keyScans_[(int)keyScans_.size() - 1];
+    sensor_msgs::LaserScan scan = keyScans_[(int)keyScans_.size() - 1]; // This is the earliest scan in time.
 
     int validScanNum = 0, matchingNum = 0;
     for (int i = 0; i < (int)scan.ranges.size(); ++i) {
@@ -568,10 +574,17 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
 {
     geometry_msgs::PoseArray poses;
     poses.header.frame_id = mapFrame_;
+    int noMatch = 0;
+    int beyondBounds = 0;
+    int sitOnWall = 0;
+    int lowMatchingRate = 0;
+
     for (int i = 0; i < (int)correspondingIndices.size(); ++i) {
         int idx = correspondingIndices[i];
-        if (idx < 0)
+        if (idx < 0) {
+            noMatch++;
             continue;
+        }
 
         double dx = localSDFKeypoints[i].getX() - currentOdomPose.getX();
         double dy = localSDFKeypoints[i].getY() - currentOdomPose.getY();
@@ -589,11 +602,15 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
 
         int u, v;
         xy2uv(sensorX, sensorY, &u, &v);
-        if (u < 0 || mapWidth_ <= u || v < 0 || mapHeight_ <= v)
+        if (u < 0 || mapWidth_ <= u || v < 0 || mapHeight_ <= v) {
+            beyondBounds++;
             continue;
+        }
         int n = v * mapWidth_ + u;
-        if (mapData_[n] != 0)
+        if (mapData_[n] != 0) {
+            sitOnWall++;
             continue;
+        }
 
         double byaw = baseLink2Laser_.getYaw();
         double bc = cos(byaw);
@@ -604,8 +621,10 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
 
         if (!addRandomSamples_) {
             if (matchingRateTH_ > 0.0) {
-                if (computeMatchingRate(Pose(baseX, baseY, baseYaw)) < matchingRateTH_)
+                if (computeMatchingRate(Pose(baseX, baseY, baseYaw)) < matchingRateTH_) {
+                    lowMatchingRate++;
                     continue;
+                }
             }
             geometry_msgs::Pose pose;
             pose.position.x = baseX;
@@ -622,8 +641,10 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
                 else
                     yaw = baseYaw + nrand(angularRandomNoise_);
                 if (matchingRateTH_ > 0.0) {
-                    if (computeMatchingRate(Pose(x, y, yaw)) < matchingRateTH_)
+                    if (computeMatchingRate(Pose(x, y, yaw)) < matchingRateTH_) {
+                        lowMatchingRate++;
                         continue;
+                    }
                 }
                 geometry_msgs::Pose pose;
                 pose.position.x = x;
@@ -633,6 +654,9 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
             }
         }
     }
+    ROS_INFO("Total %d, no match %d, beyond bounds %d, on obstacle %d, low matching rate %d, bad %d, good %d.",
+        (int)correspondingIndices.size(), noMatch, beyondBounds, sitOnWall, lowMatchingRate, 
+        noMatch + beyondBounds + sitOnWall + lowMatchingRate, (int)poses.poses.size());
     return poses;
 }
 

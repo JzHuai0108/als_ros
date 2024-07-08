@@ -1,0 +1,49 @@
+scan_name: /scan # <!-- sensor_msgs::LaserScan -->
+odom_name: /odom # <!-- nav_msgs::Odometry -->
+poses_name: /gl_sampled_poses # <!-- geometry_msgs::PoseArray -->
+local_map_name: /gl_local_map # <!-- nav_msgs::OccupancyGrid -->
+sdf_keypoints_name: /gl_sdf_keypoints # <!-- visualization_msgs::Marker -->
+local_sdf_keypoints_name: /gl_local_sdf_keypoints # <!-- visualization_msgs::Marker -->
+
+map_frame: map
+odom_frame: odom
+base_link_frame: Bzup
+laser_frame: Bzup
+
+key_scans_num: 3 # <!-- Number of scans used for global localization -->
+key_scan_interval_dist: 0.2 # <!-- Key scan interval for distance in meters -->
+key_scan_interval_yaw: 5.0 # <!-- Key scan interval for angle in degrees -->
+# If these values are less than 0, global localization is performed for every scan.
+
+gradient_square_th: 0.01 # <!-- Threshold to detect keypoints, keypoint is easily detected if this value is close to zero, but it must be larger than 0. -->
+keypoints_min_dist_from_map: 0.5 # <!-- The minimum distance between keypoints and mapped obstacles in meters, this must be positive. -->
+
+sdf_feature_window_size: 1.0 # <!-- Window size to calculate feature of keypoints in meters, this must be positive. -->
+
+average_sdf_delta_th: 0.01 # <!-- Threshold to difference between average values of distance fields within the window,
+# This is used for corresponding keypoint search and correspondences are easily found if this value is large. This must be positive. -->
+
+add_random_samples: false # <!-- Add random and/or opposite direction samples when global localization candidate poses are found -->
+add_opposite_samples: true # <!-- Add random and/or opposite direction samples when global localization candidate poses are found -->
+
+random_samples_num: 20 # <!-- Number of random samples -->
+
+positional_random_noise: 0.5 # <!-- Positional noise for the random sampling, this value must be positive. -->
+angular_random_noise: 0.3 # <!-- Angular noise for the random sampling in radians, this value must be positive. -->
+
+matching_rate_th: 0.03 # Threshold to matching rate between scan measurements and a map
+# Random samples are easily generated if this value close to 0. This value is ignored if less than 0.
+
+# The following are parameters for pointcloud_to_laserscan
+target_frame: Bzup
+transform_tolerance: 0.01
+min_height: -0.5
+max_height: 1.0
+angle_min: -M_PI
+angle_max: M_PI
+angle_increment: 0.0174532923847
+scan_time: 0.0333333333333
+range_min: 0.3
+range_max: 40.0
+inf_epsilon: 1.0
+use_inf: true

@@ -61,7 +61,7 @@ target_link_libraries(mrf_failure_detector ${catkin_LIBRARIES})
 add_executable(gl_pose_sampler src/gl_pose_sampler.cpp)
 target_link_libraries(gl_pose_sampler als_mcl ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_executable(gl_pose_sampler_eval src/GLPoseSampler.cpp src/gl_pose_sampler_eval.cpp)
+add_executable(gl_pose_sampler_eval src/GLPoseSampler.cpp src/pointcloud_to_laserscan.cpp src/gl_pose_sampler_eval.cpp)
 target_link_libraries(gl_pose_sampler_eval ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(classifier_dataset_generator src/classifier_dataset_generator.cpp)
