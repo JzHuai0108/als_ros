@@ -10,6 +10,15 @@ odom_frame: odom
 base_link_frame: Bzup
 laser_frame: Bzup
 
+playrate: 2 # how fast to process the data
+mock_map_T_odom_x: 0
+mock_map_T_odom_y: 0
+mock_map_T_odom_theta_deg: 0 # in degrees
+
+# mock_map_T_odom_x: -12
+# mock_map_T_odom_y: 8
+# mock_map_T_odom_theta_deg: 45 # in degrees
+
 key_scans_num: 3 # <!-- Number of scans used for global localization -->
 key_scan_interval_dist: 0.2 # <!-- Key scan interval for distance in meters -->
 key_scan_interval_yaw: 5.0 # <!-- Key scan interval for angle in degrees -->
@@ -31,7 +40,7 @@ random_samples_num: 20 # <!-- Number of random samples -->
 positional_random_noise: 0.5 # <!-- Positional noise for the random sampling, this value must be positive. -->
 angular_random_noise: 0.3 # <!-- Angular noise for the random sampling in radians, this value must be positive. -->
 
-matching_rate_th: 0.03 # Threshold to matching rate between scan measurements and a map
+matching_rate_th: 0.1 # Threshold to matching rate between scan measurements and a map
 # Random samples are easily generated if this value close to 0. This value is ignored if less than 0.
 
 # The following are parameters for pointcloud_to_laserscan

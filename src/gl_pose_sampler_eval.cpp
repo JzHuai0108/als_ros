@@ -94,8 +94,10 @@ void recordPosesCB(const geometry_msgs::PoseArray &poses, const ros::Time &time,
         return;
     }
     for (size_t i = 0; i < poses.poses.size(); i++) {
-        ofs << time.sec << "." << std::setw(9) << std::setfill('0') << time.nsec
-            << poses.poses[i].position.x << " " << poses.poses[i].position.y << " " << poses.poses[i].position.z << " "
+        ofs << time.sec << "." << std::setw(9) << std::setfill('0') << time.nsec << " "
+            << std::fixed << std::setprecision(8)
+            << poses.poses[i].position.x << " " << poses.poses[i].position.y << " "
+            << poses.poses[i].position.z << " " << std::setprecision(9)
             << poses.poses[i].orientation.x << " " << poses.poses[i].orientation.y << " " 
             << poses.poses[i].orientation.z << " " << poses.poses[i].orientation.w << std::endl;
     }
@@ -237,9 +239,18 @@ int main(int argc, char **argv) {
     nh.param("odometry_file", posefile, std::string(""));
     std::string outdir;
     nh.param("output_dir", outdir, std::string(""));
+    double mock_map_T_odom_x = 0;
+    double mock_map_T_odom_y = 0;
+    double mock_map_T_odom_theta = 0 * M_PI / 180;
+    nh.param("/mock_map_T_odom_x", mock_map_T_odom_x, 0.0);
+    nh.param("/mock_map_T_odom_y", mock_map_T_odom_y, 0.0);
+    nh.param("/mock_map_T_odom_theta_deg", mock_map_T_odom_theta, 0.0);
+    ROS_INFO("mock_map_T_odom_x: %f, mock_map_T_odom_y: %f, mock_map_T_odom_theta_deg: %f", mock_map_T_odom_x, mock_map_T_odom_y, mock_map_T_odom_theta);
+    mock_map_T_odom_theta *= M_PI / 180;
+    double playrate = 1;
+    nh.param("/playrate", playrate, 1.0);
 
     PointCloudToLaserScanNode pc2scan(nh);
-
     nav_msgs::OccupancyGridConstPtr submap_;
 
     TimedPoseVector tum_poses;
@@ -247,13 +258,9 @@ int main(int argc, char **argv) {
         ROS_ERROR("Failed to load TUM odometry file: %s", posefile.c_str());
         return 1;
     }
-    double dx = -12;
-    double dy = 10;
-    double theta = 45 * M_PI / 180;
-    dx = 0;
-    dy = 0;
-    theta = 0;
-    transformTumOdometry(tum_poses, {dx, dy, theta});
+    // we transform the original odometry to make the problem more realistic.
+    transformTumOdometry(tum_poses, {mock_map_T_odom_x, mock_map_T_odom_y, mock_map_T_odom_theta});
+
     // check that files of pose time as names exist
     std::string posedir;
     size_t slashpos = posefile.find_last_of('/');
@@ -278,6 +285,9 @@ int main(int argc, char **argv) {
     } else {
         ROS_INFO("All pcd files exist");
     }
+    std::string outfile = outdir + "/gl_sampled_poses.txt";
+    std::ofstream ofs(outfile, std::ios::trunc);
+    ofs.close();
 
     tf::TransformBroadcaster tf_broadcaster;
 
@@ -290,23 +300,26 @@ int main(int argc, char **argv) {
     map_server.m_worldFrameId = "map";
     map_server.m_latchedTopics = true;
 
-    ros::Rate rate(10);
+    ros::Rate rate(playrate);
     int halfwin = 2; // This has to be no more than half of the octomap server filter size 5 to avoid tf extrapolation errors.
     int lastpublishedtfid = 0;
     tf::StampedTransform W_T_Bzup;
     int k = lastpublishedtfid;
     W_T_Bzup.setOrigin(tf::Vector3(tum_poses[k].p.x(), tum_poses[k].p.y(), tum_poses[k].p.z()));
     W_T_Bzup.setRotation(tf::Quaternion(tum_poses[k].q.x(), tum_poses[k].q.y(), tum_poses[k].q.z(), tum_poses[k].q.w()));
-    W_T_Bzup.frame_id_ = "map";
-    W_T_Bzup.child_frame_id_ = "Bzup";
+    W_T_Bzup.frame_id_ = sampler.odomFrame_;
+    W_T_Bzup.child_frame_id_ = sampler.baseLinkFrame_;
     W_T_Bzup.stamp_ = tum_poses[k].t;
     tf_broadcaster.sendTransform(W_T_Bzup);
 
+    // We do not know map_T_odom, but we publish a mock value for visualization.
     tf::StampedTransform map_T_odom;
     map_T_odom.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
-    map_T_odom.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
-    map_T_odom.frame_id_ = "map";
-    map_T_odom.child_frame_id_ = "odom";
+    tf::Quaternion q;
+    q.setRPY(0, 0, 0);
+    map_T_odom.setRotation(q);
+    map_T_odom.frame_id_ = sampler.mapFrame_;
+    map_T_odom.child_frame_id_ = sampler.odomFrame_;
     map_T_odom.stamp_ = tum_poses[k].t;
     tf_broadcaster.sendTransform(map_T_odom);
 
@@ -332,10 +345,11 @@ int main(int argc, char **argv) {
                 tf::StampedTransform W_T_Bzup;
                 W_T_Bzup.setOrigin(tf::Vector3(tum_poses[k].p.x(), tum_poses[k].p.y(), tum_poses[k].p.z()));
                 W_T_Bzup.setRotation(tf::Quaternion(tum_poses[k].q.x(), tum_poses[k].q.y(), tum_poses[k].q.z(), tum_poses[k].q.w()));
-                W_T_Bzup.frame_id_ = "map";
-                W_T_Bzup.child_frame_id_ = "Bzup";
+                W_T_Bzup.frame_id_ = sampler.odomFrame_;
+                W_T_Bzup.child_frame_id_ = sampler.baseLinkFrame_;
                 W_T_Bzup.stamp_ = tum_poses[k].t;
                 tf_broadcaster.sendTransform(W_T_Bzup);
+                map_T_odom.stamp_ = tum_poses[k].t;
                 tf_broadcaster.sendTransform(map_T_odom);
                 lastpublishedtfid = k;
             }
@@ -345,45 +359,47 @@ int main(int argc, char **argv) {
             sensor_msgs::PointCloud2 cloud_msg;
             pcl::toROSMsg(*cloud, cloud_msg);
             cloud_msg.header.stamp = tum_poses[j].t;
-            cloud_msg.header.frame_id = "Bzup";
+            cloud_msg.header.frame_id = sampler.baseLinkFrame_;
             sensor_msgs::PointCloud2ConstPtr cloud_msg_ptr = boost::make_shared<sensor_msgs::PointCloud2>(cloud_msg);
             map_server.insertCloudCallback(cloud_msg_ptr);
-            if (j == i) {
-                sensor_msgs::LaserScan scan;
-                pc2scan.cloudCallback(cloud_msg_ptr);
-                scans2d.push_back(*pc2scan.scan_msg_);
-            }
+
             ros::spinOnce();
             if (j == right) {
                 nav_msgs::OccupancyGridPtr submap = boost::make_shared<nav_msgs::OccupancyGrid>(map_server.m_gridmap);
-                submap->header.stamp = tum_poses[i].t;
-                submap->header.frame_id = "odom";
+                submap->header.stamp = tum_poses[right].t;
+                submap->header.frame_id = sampler.odomFrame_;
                 submap->info.origin.orientation.w = 1.0;
                 submap_ = submap;
                 std_srvs::Empty empty;
                 map_server.resetSrv(empty.request, empty.response);
+
+                sensor_msgs::LaserScan scan;
+                pc2scan.cloudCallback(cloud_msg_ptr);
+                scans2d.push_back(*pc2scan.scan_msg_);
             }
         }
 
         // 2. with the submap and the odometry pose, call pose sampler to get the candidate localizations.
         nav_msgs::Odometry odom;
-        odom.header.stamp = tum_poses[i].t;
-        odom.header.frame_id = "map";
-        odom.child_frame_id = "Bzup";
-        odom.pose.pose.position.x = tum_poses[i].p.x();
-        odom.pose.pose.position.y = tum_poses[i].p.y();
-        odom.pose.pose.position.z = tum_poses[i].p.z();
-        odom.pose.pose.orientation.x = tum_poses[i].q.x();
-        odom.pose.pose.orientation.y = tum_poses[i].q.y();
-        odom.pose.pose.orientation.z = tum_poses[i].q.z();
-        odom.pose.pose.orientation.w = tum_poses[i].q.w();
+        odom.header.stamp = tum_poses[right].t;
+        odom.header.frame_id = sampler.odomFrame_;
+        odom.child_frame_id = sampler.baseLinkFrame_;
+        odom.pose.pose.position.x = tum_poses[right].p.x();
+        odom.pose.pose.position.y = tum_poses[right].p.y();
+        odom.pose.pose.position.z = tum_poses[right].p.z();
+        odom.pose.pose.orientation.x = tum_poses[right].q.x();
+        odom.pose.pose.orientation.y = tum_poses[right].q.y();
+        odom.pose.pose.orientation.z = tum_poses[right].q.z();
+        odom.pose.pose.orientation.w = tum_poses[right].q.w();
         sampler.odomCB(boost::make_shared<nav_msgs::Odometry>(odom));
         sampler.setKeyScans(scans2d);
         sampler.submapCB(submap_);
-        recordPosesCB(sampler.poses_, tum_poses[i].t, outdir + "/gl_sampled_poses.txt");
-        std::string mapname = "submap_" + std::to_string(i);
-        MapGenerator map_generator(outdir, mapname);
-        map_generator.mapCallback(submap_);
+        // Save poses for evaluation.
+        recordPosesCB(sampler.poses_, tum_poses[right].t, outfile);
+        // Save submaps for debug.
+        // std::string mapname = "submap_" + std::to_string(right);
+        // MapGenerator map_generator(outdir, mapname);
+        // map_generator.mapCallback(submap_);
         ros::spinOnce();
         rate.sleep();
     }

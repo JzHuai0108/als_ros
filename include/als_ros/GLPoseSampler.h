@@ -102,7 +102,6 @@ private:
     ros::Subscriber mapSub_, scanSub_, odomSub_;
     ros::Publisher posesPub_, localMapPub_, sdfKeypointsPub_, localSDFKeypointsPub_;
 
-    std::string mapFrame_, odomFrame_, baseLinkFrame_, laserFrame_;
     Pose baseLink2Laser_;
 
     int mapWidth_, mapHeight_;
@@ -156,6 +155,7 @@ public:
     }
 
     geometry_msgs::PoseArray poses_;
+    std::string mapFrame_, odomFrame_, baseLinkFrame_, laserFrame_;
 
 private:
     inline double nrand(double n) {

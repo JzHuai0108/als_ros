@@ -630,14 +630,7 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
         double baseYaw = sensorYaw - byaw;
 
         if (!addRandomSamples_) {
-            double ratio = 1.0;
-            if (matchingRateTH_ > 0.0) {
-                ratio = computeMatchingRate(Pose(baseX, baseY, baseYaw));
-                if (ratio < matchingRateTH_) {
-                    lowMatchingRate++;
-                    continue;
-                }
-            }
+            double ratio = computeMatchingRate(Pose(baseX, baseY, baseYaw));
             geometry_msgs::Pose pose;
             pose.position.x = baseX;
             pose.position.y = baseY;
@@ -672,14 +665,22 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
         noMatch + beyondBounds + sitOnWall + lowMatchingRate, (int)poses.poses.size());
     // find the max ratio and index
     double maxRatio = 0.0;
+    double secondMaxRatio = 0.0;
     int maxIdx = -1;
+    int secondMaxIdx = -1;
     for (int i = 0; i < (int)ratios.size(); ++i) {
         if (ratios[i] > maxRatio) {
+            secondMaxRatio = maxRatio;
+            secondMaxIdx = maxIdx;
             maxRatio = ratios[i];
             maxIdx = i;
+        } else if (ratios[i] > secondMaxRatio) {
+            secondMaxRatio = ratios[i];
+            secondMaxIdx = i;
         }
     }
-    if (maxIdx >= 0) {
+    ROS_INFO("max ratio: %lf, second max ratio: %lf", maxRatio, secondMaxRatio);
+    if (maxIdx >= 0 && ratios[maxIdx] > matchingRateTH_) {
         geometry_msgs::PoseArray bestPose;
         bestPose.header.frame_id = poses.header.frame_id;
         bestPose.poses.push_back(poses.poses[maxIdx]);
