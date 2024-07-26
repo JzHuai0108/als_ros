@@ -580,6 +580,8 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
     int lowMatchingRate = 0;
     std::vector<double> ratios;
     ratios.reserve(100);
+    std::vector<std::vector<double>> pose2dlist;
+    pose2dlist.reserve(100);
 
     for (int i = 0; i < (int)correspondingIndices.size(); ++i) {
         int idx = correspondingIndices[i];
@@ -587,7 +589,18 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
             noMatch++;
             continue;
         }
-
+        /*
+         * To derive the below equations, suppose there is a local coord frame, and a map coord frame
+         * function f() transforms a point (xl, yl, thetal) in the local frame to the point
+         * (xm, ym, thetam) in the map frame, using 3 parameters (mxl, myl, mthetal).
+         * That is, f(xl, yl, thetal, mxl, myl, mthetal) = (xm, ym, thetam).
+         * For another point in the local frame, (xi, yi, thetai), the corresponding point in the map frame is
+         * f(xi, yi, thetai, mxl, myl, mthetal).
+         * xmi = xm + (xi - xl) * cos(mthetal) - (yi - yl) * sin(mthetal)
+         * ymi = ym + (xi - xl) * sin(mthetal) + (yi - yl) * cos(mthetal)
+         * thetami = thetai + thetam - thetal
+         * mthetal = thetam - thetal
+         */
         double dx = localSDFKeypoints[i].getX() - currentOdomPose.getX();
         double dy = localSDFKeypoints[i].getY() - currentOdomPose.getY();
         bool myform = true;
@@ -637,6 +650,8 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
             pose.orientation = tf::createQuaternionMsgFromYaw(baseYaw);
             poses.poses.push_back(pose);
             ratios.push_back(ratio);
+            std::vector<double> pose2d{baseX, baseY, baseYaw};
+            pose2dlist.push_back(pose2d);
         } else {
             for (int j = 0; j < randomSamplesNum_; ++j) {
                 double x = baseX + nrand(positionalRandomNoise_);
@@ -679,14 +694,67 @@ geometry_msgs::PoseArray GLPoseSampler::generatePoses(Pose currentOdomPose, std:
             secondMaxIdx = i;
         }
     }
-    ROS_INFO("max ratio: %lf, second max ratio: %lf", maxRatio, secondMaxRatio);
+    ROS_INFO("max ratio: %lf at %d, second max ratio: %lf at %d", maxRatio, maxIdx, secondMaxRatio, secondMaxIdx);
     if (maxIdx >= 0 && ratios[maxIdx] > matchingRateTH_) {
         geometry_msgs::PoseArray bestPose;
         bestPose.header.frame_id = poses.header.frame_id;
         bestPose.poses.push_back(poses.poses[maxIdx]);
         poses = bestPose;
     }
-    return poses;
+
+    // find the largest clique in pose2dlist
+    // for each pair of poses, if the distance is less than 0.5m and the angle difference is less than 10 degrees, connect them
+    std::vector<std::vector<int>> graph(pose2dlist.size());
+    for (int i = 0; i < (int)pose2dlist.size(); ++i) {
+        for (int j = i + 1; j < (int)pose2dlist.size(); ++j) {
+            double dx = pose2dlist[i][0] - pose2dlist[j][0];
+            double dy = pose2dlist[i][1] - pose2dlist[j][1];
+            double dist = sqrt(dx * dx + dy * dy);
+            double dyaw = pose2dlist[i][2] - pose2dlist[j][2];
+            while (dyaw < -M_PI)
+                dyaw += 2.0 * M_PI;
+            while (dyaw > M_PI)
+                dyaw -= 2.0 * M_PI;
+            if (dist < 0.5 && fabs(dyaw) < 10.0 * M_PI / 180.0) {
+                graph[i].push_back(j);
+                graph[j].push_back(i);
+            }
+        }
+    }
+
+    // find the pose with the largest number of close neighbors
+    int maxNeighborNum = 0;
+    int maxNeighborIdx = -1;
+    for (int i = 0; i < (int)graph.size(); ++i) {
+        if ((int)graph[i].size() > maxNeighborNum) {
+            maxNeighborNum = (int)graph[i].size();
+            maxNeighborIdx = i;
+        }
+    }
+    std::vector<int> maxClique;
+    maxClique.push_back(maxNeighborIdx);
+    for (int i = 0; i < (int)graph[maxNeighborIdx].size(); ++i) {
+        int idx = graph[maxNeighborIdx][i];
+        maxClique.push_back(idx);
+    }
+
+    ROS_INFO("max clique size: %d at id %d", (int)maxClique.size(), maxNeighborIdx);
+    geometry_msgs::PoseArray maxCliquePoses;
+    maxCliquePoses.header.frame_id = poses.header.frame_id;
+
+    for (int i = 0; i < (int)maxClique.size(); ++i) {
+        int idx = maxClique[i];
+        geometry_msgs::Pose pose;
+        pose.position.x = pose2dlist[idx][0];
+        pose.position.y = pose2dlist[idx][1];
+        pose.orientation = tf::createQuaternionMsgFromYaw(pose2dlist[idx][2]);
+        maxCliquePoses.poses.push_back(pose);
+    }
+    bool useMaxClique = false;
+    if (useMaxClique)
+        return maxCliquePoses;
+    else
+        return poses;
 }
 
 void GLPoseSampler::scanCB(const sensor_msgs::LaserScan::ConstPtr &msg) {
